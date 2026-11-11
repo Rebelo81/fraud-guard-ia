@@ -1,5 +1,5 @@
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 from sqlalchemy import desc, func, select, update
@@ -106,7 +106,7 @@ class ModelRepository:
     def activate_model(self, model: MLModel) -> MLModel:
         self.deactivate_all()
         model.is_active = True
-        model.activated_at = datetime.now(timezone.utc)
+        model.activated_at = datetime.now(UTC)
         self.db.add(model)
         self.db.flush()
         return model

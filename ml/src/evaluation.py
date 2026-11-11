@@ -183,3 +183,37 @@ def measure_inference_latency(
         },
     }
 
+
+def evaluate_rule_based_heuristic(
+    X: pd.DataFrame,
+    y_true: pd.Series | np.ndarray,
+    v14_threshold: float = -2.5,
+    v4_threshold: float = 2.0,
+    v12_threshold: float = -2.0,
+    amount_high_threshold: float = 15000.0,
+) -> dict[str, Any]:
+    """
+    Evaluates a deterministic Rule-Based Heuristic Engine on the exact same partition
+    to provide an empirical baseline comparing static business rules against supervised ML
+    (LogisticRegression and RandomForestClassifier).
+
+    Rule logic:
+    Flags a transaction as suspected fraud (1) if strong univariate anomalies occur:
+      (V14 < v14_threshold) OR (V4 > v4_threshold AND V12 < v12_threshold) OR (Amount > amount_high_threshold)
+    Converts the number of triggered conditions into a pseudo-score in [0, 1] for AUC comparison.
+    """
+    y_arr = np.asarray(y_true, dtype=int)
+    c1 = (X["V14"] < v14_threshold).astype(float)
+    c2 = ((X["V4"] > v4_threshold) & (X["V12"] < v12_threshold)).astype(float)
+    c3 = (X["Amount"] > amount_high_threshold).astype(float)
+
+    # Pseudo-score in [0, 1] proportional to triggered heuristic signals
+    pseudo_scores = np.clip((0.55 * c1) + (0.35 * c2) + (0.20 * c3), 0.0, 1.0)
+    metrics = evaluate_predictions(y_true=y_arr, scores=pseudo_scores, threshold=0.35)
+    metrics["rule_definition"] = (
+        f"IF (V14 < {v14_threshold}) OR (V4 > {v4_threshold} AND V12 < {v12_threshold}) "
+        f"OR (Amount > {amount_high_threshold}) THEN Fraud(1) ELSE Legit(0)"
+    )
+    return metrics
+
+

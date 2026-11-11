@@ -1,7 +1,7 @@
 import argparse
 import json
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -103,7 +103,7 @@ def train_and_save_model(
     output_dir: str | Path,
     split_seed: int = 42,
 ) -> TrainedModelArtifact:
-    started_at = datetime.now(timezone.utc)
+    started_at = datetime.now(UTC)
 
     # Fit ONLY on training partition (70%)
     pipeline.fit(split.X_train, split.y_train)
@@ -129,7 +129,7 @@ def train_and_save_model(
     )
 
     latency_metrics = measure_inference_latency(pipeline=pipeline, X_sample=split.X_test)
-    finished_at = datetime.now(timezone.utc)
+    finished_at = datetime.now(UTC)
 
     version_dir = Path(output_dir) / version
     version_dir.mkdir(parents=True, exist_ok=True)
@@ -249,7 +249,7 @@ def run_experiments(
     )
 
     comparison_report = {
-        "generated_at": datetime.now(timezone.utc).isoformat(),
+        "generated_at": datetime.now(UTC).isoformat(),
         "dataset": {
             "filename": summary.filename,
             "sha256": summary.sha256,

@@ -1,8 +1,7 @@
 import json
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
-import joblib
 import numpy as np
 import pandas as pd
 import pytest
@@ -19,7 +18,6 @@ from ml.src.ingestion import compute_file_sha256
 from ml.src.preprocessing import (
     EXPECTED_CSV_COLUMNS,
     FEATURE_SCHEMA_VERSION,
-    FEATURES,
     V_FEATURES,
     stratified_train_val_test_split,
 )
@@ -112,7 +110,7 @@ def db_session(tmp_path: Path, trained_artifacts_dir: Path) -> Session:
             metrics=meta["metrics"],
             threshold=float(meta["threshold"]),
             is_active=(ver == "1.0.0"),
-            activated_at=datetime.now(timezone.utc) if ver == "1.0.0" else None,
+            activated_at=datetime.now(UTC) if ver == "1.0.0" else None,
         )
         session.add(m)
         session.flush()

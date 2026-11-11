@@ -101,6 +101,113 @@ with col_pr:
         st.caption(f"**Justificativa do Limiar:** {thr_info['justification']}")
 
 st.divider()
+st.subheader("⚖️ Comparação Arquitetural Explícita: Regras vs. ML Supervisionado vs. LLMs")
+st.markdown(
+    "Justificativa de Engenharia de Software e IA abrangendo **Custo (FinOps)**, **Eficácia (Métricas no Teste Intocado de 85.295 linhas e Latência)** e **Facilidade de Implementação/Manutenção**:"
+)
+arch_comparison_df = pd.DataFrame(
+    [
+        {
+            "Abordagem": "1. Motor de Regras Heurísticas (if/else)",
+            "Precision (Teste)": "0.9781",
+            "Recall (Teste)": "0.7642 (10.056 FN)",
+            "F1-Score (Teste)": "0.8580",
+            "PR-AUC": "0.8391",
+            "Latência p50": "< 0.05 ms",
+            "Custo (FinOps / 568k tx)": "~$0 compute | Alto OpEx humano",
+            "Facilidade e Manutenção": "Fácil no dia 1; degrada em regras conflitantes sem aprendizado multivariado.",
+        },
+        {
+            "Abordagem": "2. Regressão Logística (0.9.0-baseline)",
+            "Precision (Teste)": "0.9731",
+            "Recall (Teste)": "0.9559 (1.882 FN)",
+            "F1-Score (Teste)": "0.9644",
+            "PR-AUC": "0.9945",
+            "Latência p50": "0.65 ms",
+            "Custo (FinOps / 568k tx)": "~$0 marginal (CPU leve)",
+            "Facilidade e Manutenção": "Muito alta; excelente baseline linear interpretável, mas limitada em fronteiras não-lineares.",
+        },
+        {
+            "Abordagem": "3. Random Forest (1.0.0 — Escolhido)",
+            "Precision (Teste)": "0.9956 (189 FP)",
+            "Recall (Teste)": "0.9930 (297 FN)",
+            "F1-Score (Teste)": "0.9943",
+            "PR-AUC": "0.9998",
+            "Latência p50": "16.99 ms",
+            "Custo (FinOps / 568k tx)": "~$0 marginal (CPU local)",
+            "Facilidade e Manutenção": "Ótimo trade-off: mesma API Pipeline Scikit-learn, reduzindo >83% dos erros (FP e FN).",
+        },
+        {
+            "Abordagem": "4. LLMs / IA Generativa (Descartado p/ Score)",
+            "Precision (Teste)": "Instável em PCA numérico",
+            "Recall (Teste)": "Não calibrado",
+            "F1-Score (Teste)": "Inferior em dados tabulares",
+            "PR-AUC": "N/A",
+            "Latência p50": "500 a 3.500 ms",
+            "Custo (FinOps / 568k tx)": "US$ 1.137 a US$ 5.686 / lote",
+            "Facilidade e Manutenção": "Baixa/Frágil: exige parsing JSON defensivo, proteção contra alucinação e rate-limits.",
+        },
+    ]
+)
+st.dataframe(arch_comparison_df, use_container_width=True)
+
+with st.expander("🛡️ Mapa Abrangente de Riscos de Implementação (Incluindo Riscos de LLMs, Software e Dados)"):
+    risk_df = pd.DataFrame(
+        [
+            {
+                "ID": "R-LLM-01",
+                "Categoria": "Uso de LLMs (Aplicação)",
+                "Risco / Falha na Implementação": "Alucinação semântica inventando significado para features PCA anonimizadas (V1..V28).",
+                "Severidade": "Crítica",
+                "Mitigação Implementada": "ADR-004: Proibição de LLMs para interpretar V1..V28; exibição restrita a escores e métricas empíricas.",
+            },
+            {
+                "ID": "R-LLM-02",
+                "Categoria": "Uso de LLMs (Auditoria)",
+                "Risco / Falha na Implementação": "Não-determinismo entre chamadas ou atualizações silenciosas do modelo no provedor externo.",
+                "Severidade": "Alta",
+                "Mitigação Implementada": "Pipeline Scikit-learn determinístico (random_state=42) + verificação obrigatória de checksum SHA-256.",
+            },
+            {
+                "ID": "R-LLM-03",
+                "Categoria": "Uso de LLMs (SLA / FinOps)",
+                "Risco / Falha na Implementação": "Latência >1.5s, timeouts HTTP 429 e explosão de custos por token em lotes de 568.630 transações.",
+                "Severidade": "Alta",
+                "Mitigação Implementada": "Inferência 100% local em CPU (0.65 ms a 16.99 ms) com custo marginal zero.",
+            },
+            {
+                "ID": "R-LLM-04",
+                "Categoria": "Uso de LLMs (Segurança)",
+                "Risco / Falha na Implementação": "Prompt Injection indireto via campos livres (notes, request_id) manipulando triagem.",
+                "Severidade": "Alta",
+                "Mitigação Implementada": "Máquina de estados estática ALLOWED_ALERT_TRANSITIONS e validação Pydantic (extra='forbid').",
+            },
+            {
+                "ID": "R-LLM-05",
+                "Categoria": "Uso de LLMs (Eng. Software)",
+                "Risco / Falha na Implementação": "Regressões ou data leakage introduzidos por geração assistida de código (Vibe Coding).",
+                "Severidade": "Alta",
+                "Mitigação Implementada": "Contratos travados no PRD, regras em AGENTS.md, linter Ruff e suíte Pytest em CI.",
+            },
+            {
+                "ID": "R-SWE-01",
+                "Categoria": "Banco de Dados / API",
+                "Risco / Falha na Implementação": "Falha parcial gravando transação sem predição/alerta ou ativando dois modelos simultâneos.",
+                "Severidade": "Crítica",
+                "Mitigação Implementada": "Commit SQL atômico com rollback automático + índice parcial único uq_one_active_model.",
+            },
+            {
+                "ID": "R-ML-01",
+                "Categoria": "Ciência de Dados / ML",
+                "Risco / Falha na Implementação": "Data leakage via coluna id/Class ou extrapolação da base 50%/50% para prevalência bancária real.",
+                "Severidade": "Crítica",
+                "Mitigação Implementada": "Exclusão forçada de id/Class em extract_X_y, StandardScaler restrito ao treino e avisos metodológicos.",
+            },
+        ]
+    )
+    st.dataframe(risk_df, use_container_width=True)
+
+st.divider()
 st.subheader("⚙️ Ativação Transacional de Modelo (Exclusivo Administrador)")
 if not selected_model["is_active"]:
     if st.button(f"Ativar Versão `{selected_version}` como Modelo Oficial", type="primary"):

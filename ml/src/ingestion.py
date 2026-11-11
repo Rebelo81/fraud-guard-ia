@@ -1,7 +1,7 @@
 import hashlib
 import uuid
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -210,7 +210,7 @@ def import_csv_batches_to_db(
             ids = chunk[ID_COL].to_numpy(dtype=np.int64, copy=False)
             amounts = chunk[AMOUNT_COL].to_numpy(dtype=np.float64, copy=False)
             classes = chunk[TARGET_COL].to_numpy(dtype=np.int16, copy=False)
-            now_ts = datetime.now(timezone.utc)
+            now_ts = datetime.now(UTC)
 
             for i in range(len(chunk)):
                 feature_dict = {V_FEATURES[j]: float(v_values[i, j]) for j in range(28)}
@@ -261,7 +261,7 @@ def import_csv_batches_to_db(
                 db.commit()
 
         dataset_import.status = "completed"
-        dataset_import.completed_at = datetime.now(timezone.utc)
+        dataset_import.completed_at = datetime.now(UTC)
         db.commit()
         db.refresh(dataset_import)
         return dataset_import
@@ -270,7 +270,7 @@ def import_csv_batches_to_db(
         db.rollback()
         dataset_import.status = "failed"
         dataset_import.error_message = str(exc)
-        dataset_import.completed_at = datetime.now(timezone.utc)
+        dataset_import.completed_at = datetime.now(UTC)
         db.add(dataset_import)
         db.commit()
         raise

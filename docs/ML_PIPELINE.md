@@ -44,19 +44,28 @@
 
 ---
 
-## 3. Resultados Reais Medidos (`creditcard_2023.csv` — Partição de Teste Intocada 15% = 85.295 linhas)
+## 3. Comparação Explícita de Abordagens e Resultados Reais Medidos (`creditcard_2023.csv` — Teste Intocado 15% = 85.295 linhas)
 
-| Métrica / Propriedade | Baseline `0.9.0-baseline` (`LogisticRegression`) | Candidato Ativo `1.0.0` (`RandomForestClassifier`) |
-|---|---|---|
-| **Limiar Selecionado (Validação)** | `0.45` | `0.37` |
-| **Precision (Classe 1)** | `0.973051` | `0.995557` |
-| **Recall (Classe 1)** | `0.955870` | `0.993036` |
-| **F1-Score (Classe 1)** | `0.964384` | `0.994295` |
-| **ROC-AUC** | `0.993445` | `0.999826` |
-| **Average Precision (PR-AUC)** | `0.994513` | `0.999811` |
-| **Matriz de Confusão (TN / FP / FN / TP)** | `41.519 / 1.129 / 1.882 / 40.765` | `42.459 / 189 / 297 / 42.350` |
-| **Latência Predição Unitária (p50 / p95)** | `0.65 ms / 1.02 ms` | `16.99 ms / 21.79 ms` |
-| **SHA-256 do Artefato (`.joblib`)** | `26611061b028350b...` | `fc117d35092b43fb...` |
+Para fundamentar a escolha arquitetural com rigor de Engenharia de Software e Ciência de Dados, comparamos quatro alternativas no mesmo problema:
+1. **Motor de Regras Heurísticas Determinísticas** (`evaluate_rule_based_heuristic` em `ml/src/evaluation.py`): regra estática baseada nos maiores desvios univariados (`V14 < -2.5 OR (V4 > 2.0 AND V12 < -2.0) OR Amount > 15000`).
+2. **Baseline Supervisionado Linear (`0.9.0-baseline` — `LogisticRegression`)**: `Pipeline(StandardScaler, LogisticRegression)`.
+3. **Modelo Candidato Ensemble (`1.0.0` — `RandomForestClassifier` — Escolhido)**: `Pipeline(StandardScaler, RandomForestClassifier)`.
+4. **Abordagem via LLMs (IA Generativa)**: analisada arquiteturalmente e descartada para o caminho crítico de inferência numérica tabular (ADR-004).
+
+### 3.1 Tabela Comparativa Quantitativa e de Engenharia (Custo, Eficácia e Facilidade de Implementação)
+
+| Métrica / Critério de Engenharia | 1. Regras Heurísticas Estáticas | 2. Baseline `0.9.0-baseline` (`LogisticRegression`) | 3. Candidato Ativo `1.0.0` (`RandomForestClassifier`) | 4. LLM / IA Generativa (Referência Arquitetural) |
+|---|---|---|---|---|
+| **Limiar Operacional** | `0.35` (fixo por regra) | `0.45` (otimizado na validação) | `0.37` (otimizado na validação) | N/A (prompt textual sem calibração nativa) |
+| **Precision (Classe 1 — Teste)** | `0.9781` | `0.973051` | **`0.995557`** | Baixa/Instável em 28 floats PCA anonimizados |
+| **Recall (Classe 1 — Teste)** | `0.7642` (perde 23,6% das fraudes) | `0.955870` | **`0.993036`** | Baixa reprodutibilidade |
+| **F1-Score (Classe 1 — Teste)** | `0.8580` | `0.964384` | **`0.994295`** | Inferior a modelos tabulares supervisionados |
+| **ROC-AUC (Teste)** | `0.8735` | `0.993445` | **`0.999826`** | Não produz curva contínua confiável |
+| **Average Precision / PR-AUC** | `0.8391` | `0.994513` | **`0.999811`** | Não aplicável |
+| **Matriz de Confusão (TN / FP / FN / TP)** | `41.918 / 730 / 10.056 / 32.591` | `41.519 / 1.129 / 1.882 / 40.765` | **`42.459 / 189 / 297 / 42.350`** | Alta variância entre execuções |
+| **Latência Unitária (p50 / p95)** | `< 0.05 ms` | `0.65 ms / 1.02 ms` | `16.99 ms / 21.79 ms` | `500 ms a 3.500 ms` (100x+ mais lento) |
+| **Custo por 568.630 Inferências (FinOps)** | `~$0.00` (CPU local), alto OpEx de manutenção manual | `~$0.00` (CPU local, `< 1s` em batch) | `~$0.00` (CPU local, `~11s` para 568k linhas) | **US$ 1.137 a US$ 5.686** em tokens de API ou GPUs dedicadas |
+| **Facilidade de Implementação e Governança** | Fácil no início, mas degrada em dezenas de `if/else` difíceis de manter e sem aprendizado automático. | Muito alta; excelente linha de base rápida e interpretável. | **Equilíbrio ótimo:** mesma simplicidade de deploy do Scikit-learn com redução de **83,3% nos Falsos Positivos** e **84,2% nos Falsos Negativos** em relação à Regressão Logística. | Baixa para este domínio: exige parsing defensivo, proteção contra alucinação/prompt injection e gestão de indisponibilidade externa. |
 
 ---
 

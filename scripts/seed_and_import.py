@@ -1,6 +1,6 @@
 import argparse
 import json
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 from sqlalchemy import select
@@ -33,7 +33,7 @@ def register_artifacts_in_db(db: Session, artifacts_dir: str | Path = "ml/artifa
                 metrics=meta["metrics"],
                 threshold=float(meta["threshold"]),
                 is_active=(version == "1.0.0"),
-                activated_at=datetime.now(timezone.utc) if version == "1.0.0" else None,
+                activated_at=datetime.now(UTC) if version == "1.0.0" else None,
             )
             db.add(model)
             db.flush()

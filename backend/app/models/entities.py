@@ -1,9 +1,9 @@
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 from sqlalchemy import (
-     JSON,
+    JSON,
     BigInteger,
     Boolean,
     CheckConstraint,
@@ -28,7 +28,7 @@ JsonVariant = JSON().with_variant(JSONB(), "postgresql")
 
 
 def utcnow() -> datetime:
-    return datetime.now(timezone.utc)
+    return datetime.now(UTC)
 
 
 class DatasetImport(Base):

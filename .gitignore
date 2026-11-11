@@ -36,9 +36,16 @@ ml/artifacts/*
 htmlcov/
 .ruff_cache/
 
-# IDE / OS
+# IDE / OS / Packaging
 .vscode/
 .idea/
 .DS_Store
 Thumbs.db
+*.egg-info/
+build/
+dist/
+.agents/
+.claude/
+.codex/
+.cursor/
 

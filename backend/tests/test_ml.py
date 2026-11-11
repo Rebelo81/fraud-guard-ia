@@ -1,10 +1,10 @@
 from pathlib import Path
 
 import numpy as np
-import pandas as pd
 import pytest
 
 from backend.tests.conftest import make_synthetic_creditcard_df, sample_valid_features
+from ml.src.evaluation import evaluate_rule_based_heuristic
 from ml.src.inference import LoadedInferenceEngine, ModelArtifactRegistryError
 from ml.src.preprocessing import (
     FEATURE_SCHEMA_VERSION,
@@ -85,4 +85,15 @@ def test_artifact_hash_and_schema_verified_on_load(trained_artifacts_dir: Path):
         expected_schema_version=FEATURE_SCHEMA_VERSION,
     )
     assert engine.feature_schema_version == FEATURE_SCHEMA_VERSION
+
+
+def test_rule_based_heuristic_vs_supervised_ml_comparison():
+    """Verifica avaliação comparativa entre motor de regras determinísticas e ML supervisionado."""
+    df = make_synthetic_creditcard_df(n_rows=200, seed=42)
+    split = stratified_train_val_test_split(df, random_state=42)
+    rule_metrics = evaluate_rule_based_heuristic(split.X_test, split.y_test)
+    assert "f1" in rule_metrics
+    assert "confusion_matrix" in rule_metrics
+    assert "rule_definition" in rule_metrics
+
 

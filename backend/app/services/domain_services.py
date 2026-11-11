@@ -1,7 +1,7 @@
 import logging
 import math
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -28,8 +28,8 @@ from backend.app.repositories.data_repositories import (
 from backend.app.schemas.api_schemas import (
     AlertResponse,
     AlertUpdateRequest,
-    MLModelResponse,
     MetricsOverviewResponse,
+    MLModelResponse,
     PredictionCreateRequest,
     PredictionResponse,
     PredictionSummarySchema,
@@ -516,7 +516,7 @@ class AlertService:
         alert.status = req.status
         if req.notes is not None:
             alert.notes = req.notes
-        alert.reviewed_at = datetime.now(timezone.utc)
+        alert.reviewed_at = datetime.now(UTC)
         self.db.add(alert)
         self.db.commit()
         self.db.refresh(alert)

@@ -1,0 +1,62 @@
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: fraudguard-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-fraudguard}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-fraudguard_dev_password}
+      POSTGRES_DB: ${POSTGRES_DB:-fraudguard}
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-fraudguard} -d ${POSTGRES_DB:-fraudguard}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  backend:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    container_name: fraudguard-backend
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      APP_ENV: ${APP_ENV:-development}
+      DATABASE_URL: ${DATABASE_URL:-postgresql+psycopg://fraudguard:fraudguard_dev_password@db:5432/fraudguard}
+      MODEL_ARTIFACT_PATH: ${MODEL_ARTIFACT_PATH:-/app/ml/artifacts/1.0.0/pipeline.joblib}
+      MODEL_FEATURE_SCHEMA_VERSION: ${MODEL_FEATURE_SCHEMA_VERSION:-creditcard-2023-v1}
+      API_AUTH_MODE: ${API_AUTH_MODE:-local_private}
+      ANALYST_API_TOKEN: ${ANALYST_API_TOKEN:-fg-dev-analyst-token-change-me}
+      ADMIN_API_TOKEN: ${ADMIN_API_TOKEN:-fg-dev-admin-token-change-me}
+      CSV_DATA_DIR: /app
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./ml/artifacts:/app/ml/artifacts
+      - ./creditcard_2023.csv:/app/creditcard_2023.csv:ro
+
+  frontend:
+    build:
+      context: .
+      dockerfile: frontend/Dockerfile
+    container_name: fraudguard-frontend
+    restart: unless-stopped
+    depends_on:
+      - backend
+    environment:
+      STREAMLIT_API_BASE_URL: http://backend:8000/api/v1
+      ANALYST_API_TOKEN: ${ANALYST_API_TOKEN:-fg-dev-analyst-token-change-me}
+      ADMIN_API_TOKEN: ${ADMIN_API_TOKEN:-fg-dev-admin-token-change-me}
+    ports:
+      - "8501:8501"
+
+volumes:
+  pgdata:
+
